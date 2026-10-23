@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Diari de natació</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+  /* Layout: una sola columna de carril; el rellotge de sortides obre la pàgina, la resta s'ordena com un full de sèries. */
+  :root {
+    --bg: #eef4f5;
+    --panel: #fbfdfd;
+    --ink: #0d2632;
+    --ink-2: #48616c;
+    --muted: #7d929a;
+    --grid: #d6e2e5;
+    --pool: #1d6ea1;
+    --pool-soft: rgba(29, 110, 161, 0.14);
+    --ow: #cf7a24;
+    --hand: #d4352b;
+    --ok: #23845a;
+    --miss: #b9472f;
+    --on-pool: #ffffff;
+    --rope-a: #d4352b;
+    --rope-b: #1d6ea1;
+    --rope-c: #f4f7f7;
+    --clock-edge: #c9d6da;
+    --water: #cfe7ef;
+    --water-2: #bcdde8;
+    --lane-line: #1d3a4a;
+    --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+    --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #071a23; --panel: #0c2531; --ink: #e2eef2; --ink-2: #a5bec7; --muted: #7d969f; --grid: #1b3b48;
+      --pool: #5cb1e2; --pool-soft: rgba(92, 177, 226, 0.18); --ow: #eea153; --hand: #ff5e50;
+      --ok: #52c48c; --miss: #f07a60; --on-pool: #06202c; --rope-a: #ff5e50; --rope-b: #5cb1e2; --rope-c: #d7e3e6; --clock-edge: #0c2531; --water: #0f3a4d; --water-2: #12455b; --lane-line: #04131a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #071a23; --panel: #0c2531; --ink: #e2eef2; --ink-2: #a5bec7; --muted: #7d969f; --grid: #1b3b48;
+    --pool: #5cb1e2; --pool-soft: rgba(92, 177, 226, 0.18); --ow: #eea153; --hand: #ff5e50;
+    --ok: #52c48c; --miss: #f07a60; --on-pool: #06202c; --rope-a: #ff5e50; --rope-b: #5cb1e2; --rope-c: #d7e3e6; --clock-edge: #0c2531; --water: #0f3a4d; --water-2: #12455b; --lane-line: #04131a;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .page {
+    max-width: 920px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 64px;
+    display: flex; flex-direction: column; gap: 40px;
+  }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: 0.005em; }
+  h1 { font-size: clamp(34px, 6vw, 48px); line-height: 1; text-transform: uppercase; }
+  h2 { font-size: 26px; line-height: 1.05; text-transform: uppercase; }
+  .num { font-family: var(--display); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .kicker { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .lead { color: var(--ink-2); max-width: 62ch; margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--pool); outline-offset: 2px; border-radius: 4px; }
+
+  /* ---- capçalera ---- */
+  .masthead { display: flex; justify-content: space-between; align-items: end; gap: 12px 24px; flex-wrap: wrap; }
+  .masthead .meta { font-size: 13px; color: var(--muted); text-align: right; }
+
+  /* ---- corxera ---- */
+  .rope { height: 10px; border-radius: 5px; background:
+      repeating-linear-gradient(90deg, var(--rope-a) 0 14px, var(--rope-c) 14px 18px, var(--rope-b) 18px 32px, var(--rope-c) 32px 36px);
+      opacity: 0.85; }
+
+  /* ---- el dilluns ---- */
+  .monday { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 28px 36px; align-items: start; }
+  @media (max-width: 720px) { .monday { grid-template-columns: minmax(0, 1fr); } }
+  .clock-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .clock { width: 100%; max-width: 300px; aspect-ratio: 1; }
+  .clock .face { fill: #ffffff; stroke: var(--clock-edge); stroke-width: 1.5; }
+  .clock .tick { stroke: #2c3388; stroke-width: 1.4; }
+  .clock .tick.five { stroke-width: 4.5; }
+  .clock .tick.quarter { stroke-width: 5; }
+  .clock .numeral { fill: #2c3388; font-family: var(--display); font-weight: 700; font-size: 34px; }
+  .clock .start { fill: #2c3388; fill-opacity: 0.16; stroke: #2c3388; stroke-width: 1.5; }
+  .clock .start-lbl { fill: #2c3388; font-family: var(--display); font-weight: 700; font-size: 10.5px; }
+  .clock .c-what { fill: #2c3388; font-family: var(--display); font-weight: 700; font-size: 24px; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+  .clock .c-sub { fill: #4f5590; font-family: var(--body); font-size: 11.5px; paint-order: stroke; stroke: #ffffff; stroke-width: 4px; stroke-linejoin: round; }
+  .hand-rot { transform-origin: 150px 150px; animation: sweep 60s linear infinite; }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .hand-rot { animation: none; } }
+  .clock-cap { display: flex; align-items: baseline; gap: 10px; }
+  .cc-what { font-family: var(--display); font-weight: 700; font-size: 26px; }
+  .cc-sub { font-family: var(--display); font-weight: 600; font-size: 18px; color: var(--hand); }
+  .clock-note { font-size: 12.5px; color: var(--muted); text-align: center; max-width: 34ch; margin: 0; }
+
+  .session-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .session-title { display: flex; align-items: baseline; gap: 10px 14px; flex-wrap: wrap; }
+  .session-title h2 { font-size: 34px; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1.5px solid var(--grid); color: var(--ink-2); white-space: nowrap; }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ow); }
+  .pill.ok::before { background: var(--ok); }
+  .why { color: var(--ink-2); margin: 0; max-width: 58ch; }
+
+  .sets { display: flex; flex-direction: column; }
+  .set {
+    display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 2px 14px; align-items: center;
+    padding: 11px 12px; margin: 0 -12px; border: none; background: none; text-align: left; border-radius: 8px;
+    border-bottom: 1px solid var(--grid); cursor: pointer;
+  }
+  .set:last-child { border-bottom: none; }
+  .set[disabled] { cursor: default; }
+  .set:not([disabled]):hover { background: var(--pool-soft); }
+  .set[aria-pressed="true"] { background: var(--pool-soft); }
+  .set .part { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .set .what { font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.1; min-width: 0; }
+  .set .what small { font-family: var(--body); font-weight: 400; font-size: 13.5px; color: var(--ink-2); margin-left: 8px; }
+  .set .when { font-family: var(--display); font-weight: 600; font-size: 18px; color: var(--hand); white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+  .set .m { grid-column: 3; font-size: 12.5px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .set.opt .what { color: var(--ink-2); }
+  .total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 14px; border-top: 2px solid var(--ink); margin-top: 4px; }
+  .total .num { font-size: 30px; }
+  .total span:first-child { color: var(--ink-2); font-size: 13.5px; }
+  @media (max-width: 460px) {
+    .set { grid-template-columns: minmax(0, 1fr) auto; }
+    .set .part { grid-column: 1 / -1; }
+    .set .m { grid-column: 2; }
+  }
+
+  /* ---- setmana ---- */
+  .two { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 40px; align-items: start; }
+  @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .block-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .weeks { display: flex; flex-direction: column; }
+  .wk { display: grid; grid-template-columns: 102px repeat(3, 34px) minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--grid); }
+  .wk:first-child { border-top: none; }
+  .wk .lbl { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .wk .lbl b { color: var(--ink); }
+  .day { height: 26px; border-radius: 5px; display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+  .day.done { background: var(--pool); color: var(--on-pool); }
+  .day.miss { border: 1.5px solid var(--miss); color: var(--miss); }
+  .day.pending { border: 1.5px dashed var(--muted); color: var(--muted); }
+  .wk .mtr { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+  .summary { font-size: 14px; color: var(--ink-2); margin: 0; }
+  .summary b { color: var(--ink); }
+
+  .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 1px; background: var(--panel); border: 1px solid var(--grid); border-radius: 10px; overflow: hidden; }
+  .board .cell { background: var(--panel); box-shadow: 0 0 0 1px var(--grid); padding: 10px 12px; display: flex; flex-direction: column; gap: 1px; }
+  .board .d { font-family: var(--display); font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; }
+  .board .t { font-family: var(--display); font-size: 30px; font-weight: 700; color: var(--hand); line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .board .p { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .later { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+
+  /* ---- històric ---- */
+  .hist-head { display: flex; justify-content: space-between; align-items: end; gap: 14px; flex-wrap: wrap; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .filters select {
+    appearance: none; -webkit-appearance: none; font-family: var(--display); font-weight: 600; font-size: 17px; color: var(--ink);
+    background: var(--panel); border: 1.5px solid var(--grid); border-radius: 8px; padding: 6px 34px 6px 12px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+    background-position: calc(100% - 17px) 55%, calc(100% - 12px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
+  }
+  .filters select:hover { border-color: var(--pool); }
+  .filters button { border: none; background: none; color: var(--pool); font-size: 13.5px; cursor: pointer; padding: 6px 4px; text-decoration: underline; text-underline-offset: 3px; }
+  .scores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 24px; padding: 16px 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--grid); }
+  @media (max-width: 600px) { .scores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .score .v { font-family: var(--display); font-weight: 700; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .score .v small { font-size: 18px; font-weight: 600; color: var(--ink-2); margin-left: 3px; }
+  .score .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+  .chart-block { display: flex; flex-direction: column; gap: 6px; }
+  .chart-block h3 { font-size: 21px; text-transform: uppercase; }
+  .chart-block .q { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+  .chart { position: relative; width: 100%; margin-top: 6px; }
+  .chart svg { display: block; width: 100%; overflow: visible; }
+  .scroll-x { overflow-x: auto; }
+  .scroll-x .chart { min-width: 620px; }
+  svg text { font-family: var(--body); }
+  .ax { fill: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .ax.ink { fill: var(--ink-2); }
+  .val { fill: var(--ink); font-family: var(--display); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .gl { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+  .base { stroke: var(--ink-2); stroke-width: 1; shape-rendering: crispEdges; }
+  .b-pool { fill: var(--pool); }
+  .b-ow { fill: var(--ow); }
+  .band { fill: var(--pool-soft); }
+  .line { fill: none; stroke: var(--pool); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+  .end-dot { fill: var(--pool); stroke: var(--panel); stroke-width: 2; }
+  .lane-bg { fill: var(--panel); }
+  .lane-sep { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 2 3; }
+  .t-pool { stroke: var(--pool); stroke-width: 1.6; }
+  .t-ow { stroke: var(--ow); stroke-width: 2; }
+  .lane-dim { opacity: 0.28; }
+  .hit { fill: transparent; }
+  .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  table.rec { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table.rec th { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-align: right; padding: 0 8px 8px; border-bottom: 2px solid var(--ink); }
+  table.rec td { text-align: right; padding: 9px 8px; border-bottom: 1px solid var(--grid); color: var(--ink-2); font-size: 14px; }
+  table.rec th:first-child, table.rec td:first-child { text-align: left; }
+  table.rec td.dist { font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--ink); }
+  table.rec td.time { font-family: var(--display); font-weight: 700; font-size: 22px; color: var(--pool); }
+  table.rec td.none { font-style: italic; color: var(--muted); text-align: left; }
+  table.rec td.age b { font-family: var(--display); font-weight: 600; font-size: 16px; color: var(--ink); display: block; }
+  table.rec td.age span { font-size: 12px; color: var(--muted); }
+  table.rec td.age.fresh b { color: var(--ok); }
+  table.rec td.gap { font-family: var(--display); font-weight: 600; font-size: 16px; }
+  table.rec td.gap.is-rec { color: var(--ok); }
+  @media (max-width: 520px) {
+    table.rec .c-pace { display: none; }
+    table.rec th, table.rec td { padding-left: 4px; padding-right: 4px; }
+    table.rec td.dist { font-size: 17px; }
+    table.rec td.time { font-size: 19px; }
+    table.rec td.gap { font-size: 14px; }
+  }
+  .pool-wrap { border-radius: 10px; overflow: hidden; }
+  .water { fill: var(--water); }
+  .water-alt { fill: var(--water-2); }
+  .deck { fill: var(--panel); }
+  .wall { fill: var(--ink); }
+  .wall.finish { fill: var(--ok); }
+  .tline { stroke: var(--lane-line); stroke-width: 3; opacity: 0.22; }
+  .rope-a { stroke: var(--rope-a); stroke-width: 4; stroke-dasharray: 6 8; }
+  .rope-b { stroke: var(--rope-c); stroke-width: 4; stroke-dasharray: 6 8; stroke-dashoffset: 7; }
+  .flag { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.7; }
+  .lane-name { fill: var(--ink); font-family: var(--display); font-weight: 700; font-size: 16px; }
+  .sw-rec { fill: var(--ink); stroke: var(--water); stroke-width: 2; }
+  .sw-cmp { fill: var(--pool); stroke: var(--water); stroke-width: 2; }
+  .sw-same { fill: var(--ok); stroke: var(--water); stroke-width: 2; }
+  .sw-wake { stroke: var(--pool); stroke-width: 2; opacity: 0.45; stroke-linecap: round; }
+  .gap-lbl { fill: var(--ink); font-family: var(--display); font-weight: 600; font-size: 15px; paint-order: stroke; stroke: var(--water); stroke-width: 4px; stroke-linejoin: round; }
+  .gap-lbl.ok { fill: var(--ok); }
+  .gap-lbl.none { fill: var(--muted); font-family: var(--body); font-weight: 400; font-size: 12.5px; font-style: italic; }
+  .legend .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  .tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; line-height: 1.45; padding: 6px 10px; border-radius: 6px; max-width: 240px; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: opacity 0.08s; white-space: pre-line; }
+  footer { font-size: 12.5px; color: var(--muted); max-width: 70ch; line-height: 1.65; }
+</style>
+
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div>
+      <div class="kicker">Piscina de 25 m · crol</div>
+      <h1>Diari de natació</h1>
+    </div>
+    <div class="meta" id="metaLine"></div>
+  </header>
+
+  <section aria-labelledby="mondayTitle">
+    <div class="monday">
+      <div class="clock-wrap">
+        <svg class="clock" id="clock" viewBox="0 0 300 300" role="img" aria-label="Rellotge de sortides"></svg>
+        <div class="clock-cap"><span class="cc-what" id="ccWhat"></span><span class="cc-sub" id="ccSub"></span></div>
+        <p class="clock-note" id="clockNote"></p>
+      </div>
+      <div>
+        <div class="session-head">
+          <div class="kicker" id="mondayKicker">Propera sessió</div>
+          <div class="session-title">
+            <h2 id="mondayTitle"></h2>
+            <span class="pill" id="mondayStatus"></span>
+          </div>
+          <p class="why" id="mondayWhy"></p>
+        </div>
+        <div class="sets" id="sets"></div>
+        <div class="total"><span>Total amb el bloc opcional</span><span class="num" id="mondayTotal"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rope" aria-hidden="true"></div>
+
+  <section class="two" aria-label="Aquesta setmana">
+    <div>
+      <div class="block-head">
+        <div class="kicker">Les tres sessions fixes</div>
+        <h2>Dilluns, dimecres i divendres</h2>
+        <p class="summary" id="attSummary"></p>
+      </div>
+      <div class="weeks" id="weeks"></div>
+    </div>
+    <div>
+      <div class="block-head">
+        <div class="kicker">On som</div>
+        <h2>Sortides actuals</h2>
+        <p class="summary">El ritme no canvia; el que endureix l'entrenament és sortir abans. Cada setmana completa, una distància surt 5 segons abans o guanya una repetició.</p>
+      </div>
+      <div class="board" id="board"></div>
+      <p class="later">Quan hi hagi les dades de cada repetició, aquí es veurà com baixa cada sortida setmana a setmana.</p>
+    </div>
+  </section>
+
+  <div class="rope" aria-hidden="true"></div>
+
+  <section aria-labelledby="histTitle" style="display:flex;flex-direction:column;gap:28px">
+    <div class="hist-head">
+      <div>
+        <div class="kicker">Des del 2018</div>
+        <h2 id="histTitle">Històric</h2>
+      </div>
+      <div class="filters">
+        <label for="fYear" class="kicker" style="margin-right:2px">Mostra</label>
+        <select id="fYear" aria-label="Any"></select>
+        <select id="fMonth" aria-label="Mes"></select>
+        <button type="button" id="fReset" hidden>Tot l'històric</button>
+      </div>
+    </div>
+
+    <div class="scores" id="scores"></div>
+
+    <div class="chart-block">
+      <h3>Volum</h3>
+      <p class="q" id="volQ"></p>
+      <div class="chart" id="volChart"></div>
+      <div class="legend"><span><i style="background:var(--pool)"></i>Piscina</span><span><i style="background:var(--ow)"></i>Aigües obertes</span></div>
+    </div>
+
+    <div class="chart-block">
+      <h3>Cada dia a l'aigua</h3>
+      <p class="q">Un carril per any. Cada ratlla és un dia nedat; com més alta, més metres.</p>
+      <div class="scroll-x"><div class="chart" id="laneChart"></div></div>
+    </div>
+
+    <div class="chart-block">
+      <h3>Ritme i eficiència</h3>
+      <p class="q">Mitjana de cada mes a les sessions de piscina. La franja marca on cau la meitat de les sessions. Amunt vol dir millor.</p>
+      <div class="chart" id="paceChart"></div>
+    </div>
+
+    <div class="chart-block">
+      <h3>Rècords</h3>
+      <p class="q" id="recQ"></p>
+      <div class="pool-wrap"><div class="chart" id="poolChart"></div></div>
+      <div class="legend" id="poolLegend"></div>
+      <div style="margin-top:14px"><table class="rec" id="recTable">
+        <thead><tr id="recHead"></tr></thead>
+        <tbody id="recBody"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <footer>Dades del rellotge Garmin (natació en piscina i en aigües obertes). Els rècords només compten trams seguits, sense parar i del mateix estil. Aquesta pàgina no mostra dades de salut: ni freqüència cardíaca, ni son, ni calories.</footer>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+function start(D) {
+  var TODAY = D.generat_el;
+  var MONDAY = D.monday;
+  var SORTIDES = D.sortides;
+  var RECORD_DIST = [50, 75, 100, 200, 300, 400, 600, 1000];
+
+  var NS = "http://www.w3.org/2000/svg";
+  var MES = ["gen", "feb", "mar", "abr", "mai", "jun", "jul", "ago", "set", "oct", "nov", "des"];
+  var MESF = ["gener", "febrer", "març", "abril", "maig", "juny", "juliol", "agost", "setembre", "octubre", "novembre", "desembre"];
+  var DIA = ["diumenge", "dilluns", "dimarts", "dimecres", "dijous", "divendres", "dissabte"];
+  function $(id) { return document.getElementById(id); }
+  function el(tag, attrs, text) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+  function fmtDate(iso) { var p = iso.split("-"); var m = parseInt(p[1], 10) - 1; return parseInt(p[2], 10) + (/^[aeiouà]/.test(MESF[m]) ? " d'" : " de ") + MESF[m] + " de " + p[0]; }
+  function fmtShort(iso) { var p = iso.split("-"); return parseInt(p[2], 10) + " " + MES[parseInt(p[1], 10) - 1]; }
+  function clock(sec) { var m = Math.floor(sec / 60), s = Math.round(sec - m * 60); if (s === 60) { m++; s = 0; } return m + "'" + (s < 10 ? "0" : "") + s + "\""; }
+  function swimTime(sec) { var m = Math.floor(sec / 60), s = sec - m * 60; var t = s.toFixed(1).replace(".", ","); return (m ? m + ":" : "") + (m && s < 10 ? "0" : "") + t; }
+  function km(m) { return (m / 1000).toLocaleString("ca-ES", { maximumFractionDigits: 1, minimumFractionDigits: m < 100000 ? 1 : 0 }); }
+  function isoAdd(iso, n) { var d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function wd(iso) { return new Date(iso + "T12:00:00Z").getUTCDay(); }
+  function mondayOf(iso) { return isoAdd(iso, -((wd(iso) + 6) % 7)); }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  var DATA_UNTIL = D.sessions[D.sessions.length - 1].date;
+
+  /* ---- tooltip compartit ---- */
+  var tip = $("tip");
+  function showTip(text, x, y) { tip.textContent = text; tip.style.left = Math.min(window.innerWidth - 130, Math.max(130, x)) + "px"; tip.style.top = y + "px"; tip.style.opacity = 1; }
+  function hideTip() { tip.style.opacity = 0; }
+  document.addEventListener("pointerover", function (e) { var t = e.target.closest && e.target.closest("[data-tip]"); if (t) { var r = t.getBoundingClientRect(); showTip(t.getAttribute("data-tip"), r.left + r.width / 2, r.top); } });
+  document.addEventListener("pointerout", function (e) { if (e.target.closest && e.target.closest("[data-tip]")) hideTip(); });
+  window.addEventListener("scroll", hideTip, { passive: true });
+
+  $("metaLine").textContent = "Dades fins al " + fmtDate(DATA_UNTIL);
+
+  /* ================= el dilluns ================= */
+  var clockSvg = $("clock"), C = 150, R = 124;
+  function polar(sec, r) { var a = (sec / 60) * 2 * Math.PI - Math.PI / 2; return [C + r * Math.cos(a), C + r * Math.sin(a)]; }
+  function drawClockFace() {
+    clockSvg.appendChild(el("rect", { class: "face", x: 4, y: 4, width: 292, height: 292, rx: 36 }));
+    for (var s = 0; s < 60; s++) {
+      var q = s % 15 === 0, f = s % 5 === 0;
+      var p1 = polar(s, R + 6), p2 = polar(s, q ? R - 16 : f ? R - 12 : R - 3);
+      clockSvg.appendChild(el("line", { class: "tick" + (q ? " quarter" : f ? " five" : ""), x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1] }));
+      if (s % 10 === 0) { var pn = polar(s, R - 40); clockSvg.appendChild(el("text", { class: "numeral", x: pn[0], y: pn[1] + 12, "text-anchor": "middle" }, String(s))); }
+    }
+  }
+  var startsLayer = el("g", {}), centerLayer = el("g", {});
+  drawClockFace();
+  clockSvg.appendChild(startsLayer);
+  var handG = el("g", { class: "hand-rot" });
+  var L = R - 8;
+  [["#2f3a9e", 0], ["#11906a", 15], ["#e23a2e", 30], ["#f3cd1c", 45]].forEach(function (h) {
+    var pts = [[-5, 6], [5, 6], [5, -L + 11], [0, -L], [-5, -L + 11]].map(function (p) { return p[0] + C + "," + (p[1] + C); }).join(" ");
+    handG.appendChild(el("polygon", { points: pts, fill: h[0], transform: "rotate(" + (h[1] * 6) + " " + C + " " + C + ")" }));
+  });
+  clockSvg.appendChild(handG);
+  clockSvg.appendChild(centerLayer);
+  handG.style.animationDelay = "-" + (new Date().getSeconds() + new Date().getMilliseconds() / 1000) + "s";
+
+  function drawStarts(b) {
+    startsLayer.innerHTML = ""; centerLayer.innerHTML = "";
+    var bySec = {};
+    for (var i = 0; i < b.reps; i++) { var sec = (i * b.sortida) % 60; (bySec[sec] = bySec[sec] || []).push(i + 1); }
+    Object.keys(bySec).forEach(function (k) {
+      var reps = bySec[k], p = polar(+k, R - 70);
+      var g = el("g", { "data-tip": (reps.length > 1 ? "Repeticions " + reps.join(", ") : "Repetició " + reps[0]) + ": surt al " + k });
+      g.appendChild(el("circle", { class: "start", cx: p[0], cy: p[1], r: reps.length > 1 ? 11 : 9 }));
+      g.appendChild(el("text", { class: "start-lbl", x: p[0], y: p[1] + 3.8, "text-anchor": "middle" }, reps.length > 1 ? "×" + reps.length : String(reps[0])));
+      startsLayer.appendChild(g);
+    });
+    $("ccWhat").textContent = b.reps + " × " + b.dist + " m";
+    $("ccSub").textContent = "surt cada " + clock(b.sortida);
+    var same = Object.keys(bySec).length === 1;
+    $("clockNote").textContent = same
+      ? "La sortida és un minut exacte: totes les repeticions surten al 0."
+      : "Cada cercle és el segon on surt una repetició, si la primera surt al 0.";
+  }
+
+  function renderMonday() {
+    if (!MONDAY) { document.querySelector("section[aria-labelledby=mondayTitle]").hidden = true; return; }
+    $("mondayKicker").textContent = "Propera sessió · " + fmtDate(MONDAY.date);
+    $("mondayTitle").textContent = cap(DIA[wd(MONDAY.date)]) + " · " + MONDAY.tipus.toLowerCase();
+    var pill = $("mondayStatus");
+    pill.textContent = MONDAY.pujat ? "Al rellotge" : "Esborrany";
+    pill.classList.toggle("ok", MONDAY.pujat);
+    $("mondayWhy").textContent = MONDAY.motiu;
+    var wrap = $("sets"), total = 0, buttons = [];
+    MONDAY.blocs.forEach(function (b, i) {
+      total += b.m;
+      var btn = document.createElement("button");
+      btn.type = "button"; btn.className = "set" + (b.opt ? " opt" : "");
+      btn.innerHTML = "<span class='part'></span><span class='what'></span><span class='when'></span><span></span><span></span><span class='m'></span>";
+      btn.querySelector(".part").textContent = b.part;
+      var w = btn.querySelector(".what"); w.textContent = b.reps > 1 ? b.reps + " × " + b.dist : b.dist + " m";
+      var sm = document.createElement("small"); sm.textContent = b.note; w.appendChild(sm);
+      btn.querySelector(".when").textContent = b.sortida ? "surt a " + clock(b.sortida) : "";
+      btn.querySelector(".m").textContent = b.m.toLocaleString("ca-ES") + " m";
+      if (!b.sortida) btn.disabled = true;
+      else btn.addEventListener("click", function () { select(i); });
+      btn.setAttribute("aria-pressed", "false");
+      buttons.push(btn); wrap.appendChild(btn);
+    });
+    function select(i) { buttons.forEach(function (bt, j) { bt.setAttribute("aria-pressed", j === i ? "true" : "false"); }); drawStarts(MONDAY.blocs[i]); }
+    $("mondayTotal").textContent = total.toLocaleString("ca-ES") + " m";
+    var first = MONDAY.blocs.findIndex(function (b) { return b.sortida && b.part.indexOf("Principal") === 0; });
+    select(first < 0 ? 0 : first);
+  }
+
+  /* ================= setmana ================= */
+  function renderWeeks() {
+    var byDay = {};
+    D.sessions.forEach(function (s) { if (s.type === "lap_swimming") byDay[s.date] = (byDay[s.date] || 0) + s.distance; });
+    var weeks = [], w = mondayOf(TODAY);
+    for (var i = 0; i < 8; i++) { weeks.push(w); w = isoAdd(w, -7); }
+    var totals = weeks.map(function (wk) { var t = 0; for (var k = 0; k < 7; k++) t += byDay[isoAdd(wk, k)] || 0; return t; });
+    var box = $("weeks"); box.innerHTML = "";
+    var done3 = 0, closed = 0, miss = { 0: 0, 2: 0, 4: 0 };
+    weeks.forEach(function (wk, idx) {
+      var row = document.createElement("div"); row.className = "wk";
+      var lbl = document.createElement("div"); lbl.className = "lbl";
+      lbl.innerHTML = idx === 0 ? "<b>Aquesta</b>" : "";
+      if (idx !== 0) lbl.textContent = fmtShort(wk) + " – " + fmtShort(isoAdd(wk, 6));
+      row.appendChild(lbl);
+      var all = true, open = false;
+      [[0, "DL"], [2, "DC"], [4, "DV"]].forEach(function (d) {
+        var day = isoAdd(wk, d[0]), c = document.createElement("div"), m = byDay[day];
+        c.textContent = d[1];
+        if (m) { c.className = "day done"; c.setAttribute("data-tip", cap(DIA[wd(day)]) + " " + fmtShort(day) + "\n" + Math.round(m).toLocaleString("ca-ES") + " m"); }
+        else if (day > DATA_UNTIL) { c.className = "day pending"; open = true; all = false; c.setAttribute("data-tip", cap(DIA[wd(day)]) + " " + fmtShort(day) + "\nencara no ha arribat"); }
+        else { c.className = "day miss"; all = false; miss[d[0]]++; c.setAttribute("data-tip", cap(DIA[wd(day)]) + " " + fmtShort(day) + "\nno s'ha nedat"); }
+        row.appendChild(c);
+      });
+      var mcell = document.createElement("div"); mcell.className = "mtr";
+      mcell.textContent = totals[idx] ? totals[idx].toLocaleString("ca-ES") + " m" : "cap sessió";
+      row.appendChild(mcell);
+      if (!open) { closed++; if (all) done3++; }
+      box.appendChild(row);
+    });
+    var worst = [[0, "el dilluns"], [2, "el dimecres"], [4, "el divendres"]].sort(function (a, b) { return miss[b[0]] - miss[a[0]]; })[0];
+    $("attSummary").innerHTML = "";
+    var s1 = document.createElement("span"); s1.textContent = "De les últimes " + closed + " setmanes, ";
+    var b1 = document.createElement("b"); b1.textContent = done3 + " han tingut les tres sessions";
+    var s2 = document.createElement("span"); s2.textContent = ". El dia que més falla és ";
+    var b2 = document.createElement("b"); b2.textContent = worst[1];
+    var s3 = document.createElement("span"); s3.textContent = " (" + miss[worst[0]] + " de " + closed + ").";
+    [s1, b1, s2, b2, s3].forEach(function (n) { $("attSummary").appendChild(n); });
+  }
+
+  function renderBoard() {
+    var b = $("board"); b.innerHTML = "";
+    SORTIDES.forEach(function (x) {
+      var c = document.createElement("div"); c.className = "cell";
+      c.innerHTML = "<span class='d'></span><span class='t'></span><span class='p'></span>";
+      c.querySelector(".d").textContent = x[0] + " M";
+      c.querySelector(".t").textContent = clock(x[1]);
+      c.querySelector(".p").textContent = clock(x[1] * 100 / x[0]) + " per 100";
+      b.appendChild(c);
+    });
+  }
+
+  /* ================= històric ================= */
+  var state = { year: "all", month: "all" };
+  function inScope(iso) { return (state.year === "all" || iso.slice(0, 4) === state.year) && (state.month === "all" || iso.slice(5, 7) === state.month); }
+  function scopeName() {
+    if (state.year === "all" && state.month === "all") return "";
+    if (state.year === "all") return "dels " + MESF[+state.month - 1] + "s";
+    if (state.month === "all") return "del " + state.year;
+    return (/^[aeiouà]/.test(MESF[+state.month - 1]) ? "d'" : "de ") + MESF[+state.month - 1] + " del " + state.year;
+  }
+  (function setupFilters() {
+    var fy = $("fYear"), fm = $("fMonth");
+    [["all", "Tots els anys"]].concat(D.years.map(function (y) { return [y, y]; })).forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; fy.appendChild(op); });
+    [["all", "Tots els mesos"]].concat(MESF.map(function (m, i) { return [String(i + 1).padStart(2, "0"), cap(m)]; })).forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; fm.appendChild(op); });
+    fy.value = "all"; fm.value = "all";
+    fy.addEventListener("change", function () { state.year = fy.value; renderHistory(); });
+    fm.addEventListener("change", function () { state.month = fm.value; renderHistory(); });
+    $("fReset").addEventListener("click", function () { state.year = "all"; state.month = "all"; fy.value = "all"; fm.value = "all"; renderHistory(); });
+  })();
+
+  function renderScores(sess, recs) {
+    var pool = sess.filter(function (s) { return s.type === "lap_swimming"; });
+    var tot = sess.reduce(function (a, s) { return a + s.distance; }, 0);
+    var best100 = recs.filter(function (r) { return r.distance === 100; }).sort(function (a, b) { return a.time_s - b.time_s; })[0];
+    var longest = sess.slice().sort(function (a, b) { return b.distance - a.distance; })[0];
+    var items = [
+      [km(tot), "km", "nedats"],
+      [String(sess.length), "", "sessions (" + pool.length + " a piscina)"],
+      [best100 ? swimTime(best100.time_s) : "—", "", "millor 100 m"],
+      [longest ? km(longest.distance) : "—", longest ? "km" : "", "sessió més llarga"]
+    ];
+    var box = $("scores"); box.innerHTML = "";
+    items.forEach(function (it) {
+      var d = document.createElement("div"); d.className = "score";
+      d.innerHTML = "<div class='v'></div><div class='l'></div>";
+      d.querySelector(".v").textContent = it[0];
+      if (it[1]) { var sm = document.createElement("small"); sm.textContent = it[1]; d.querySelector(".v").appendChild(sm); }
+      d.querySelector(".l").textContent = it[2];
+      box.appendChild(d);
+    });
+  }
+
+  function svgFor(container, h) {
+    container.innerHTML = "";
+    var w = Math.max(280, container.clientWidth || 800);
+    var svg = el("svg", { viewBox: "0 0 " + w + " " + h, width: w, height: h });
+    container.appendChild(svg);
+    return { svg: svg, w: w, h: h };
+  }
+  function niceStep(max, target) { var raw = max / target, p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+
+  function renderVolume() {
+    var groups = [], byYear = state.year === "all";
+    if (byYear) {
+      D.years.slice().sort().forEach(function (y) { groups.push({ key: y, label: y, pool: 0, ow: 0 }); });
+      D.sessions.forEach(function (s) { if (state.month !== "all" && s.date.slice(5, 7) !== state.month) return; var g = groups.find(function (x) { return x.key === s.date.slice(0, 4); }); if (g) g[s.type === "lap_swimming" ? "pool" : "ow"] += s.distance; });
+      $("volQ").textContent = state.month === "all" ? "Quants quilòmetres cada any." : "Quants quilòmetres cada " + MESF[+state.month - 1] + ", any per any.";
+    } else {
+      for (var m = 0; m < 12; m++) groups.push({ key: String(m + 1).padStart(2, "0"), label: MES[m], pool: 0, ow: 0 });
+      D.sessions.forEach(function (s) { if (s.date.slice(0, 4) !== state.year) return; groups[parseInt(s.date.slice(5, 7), 10) - 1][s.type === "lap_swimming" ? "pool" : "ow"] += s.distance; });
+      $("volQ").textContent = "Quants quilòmetres cada mes del " + state.year + "." + (state.month !== "all" ? " En fosc, " + MESF[+state.month - 1] + "." : "");
+    }
+    var o = svgFor($("volChart"), 240), svg = o.svg, W = o.w, H = o.h;
+    var padL = 6, padR = 6, padT = 26, padB = 26, plotH = H - padT - padB;
+    var max = Math.max.apply(null, groups.map(function (g) { return g.pool + g.ow; }).concat([1000]));
+    var slot = (W - padL - padR) / groups.length, bw = Math.min(46, slot * 0.62);
+    function y(v) { return padT + plotH - v / max * plotH; }
+    svg.appendChild(el("line", { class: "base", x1: padL, x2: W - padR, y1: y(0), y2: y(0) }));
+    groups.forEach(function (g, i) {
+      var cx = padL + slot * (i + 0.5), x = cx - bw / 2, tot = g.pool + g.ow;
+      var dimBar = !byYear && state.month !== "all" && g.key !== state.month ? " lane-dim" : "";
+      if (g.pool) svg.appendChild(el("rect", { class: "b-pool" + dimBar, x: x, y: y(g.pool), width: bw, height: y(0) - y(g.pool) }));
+      if (g.ow) svg.appendChild(el("rect", { class: "b-ow" + dimBar, x: x, y: y(tot), width: bw, height: y(g.pool) - y(tot) }));
+      if (tot) svg.appendChild(el("text", { class: "val", x: cx, y: y(tot) - 6, "text-anchor": "middle" }, km(tot)));
+      svg.appendChild(el("text", { class: "ax ink", x: cx, y: H - 8, "text-anchor": "middle" }, slot < 34 && !byYear ? g.label.charAt(0) : g.label));
+      var hit = el("rect", { class: "hit", x: padL + slot * i, y: padT, width: slot, height: plotH, "data-tip": (byYear ? g.label : cap(MESF[i]) + " " + state.year) + "\nPiscina: " + km(g.pool) + " km\nAigües obertes: " + km(g.ow) + " km" });
+      svg.appendChild(hit);
+    });
+  }
+
+  function renderLanes() {
+    var years = D.years.slice().sort();
+    var byDate = {};
+    D.sessions.forEach(function (s) { var r = byDate[s.date] = byDate[s.date] || { pool: 0, ow: 0 }; r[s.type === "lap_swimming" ? "pool" : "ow"] += s.distance; });
+    var laneH = 30, padL = 46, padT = 22, H = padT + years.length * laneH + 4;
+    var o = svgFor($("laneChart"), H), svg = o.svg, W = o.w;
+    var plotW = W - padL - 6;
+    var maxD = 0; Object.keys(byDate).forEach(function (d) { maxD = Math.max(maxD, byDate[d].pool + byDate[d].ow); });
+    function x(doy) { return padL + doy / 366 * plotW; }
+    var mStart = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    mStart.forEach(function (d, m) { svg.appendChild(el("text", { class: "ax", x: x(d) + 2, y: 12 }, MES[m])); });
+    years.forEach(function (yr, i) {
+      var top = padT + i * laneH, dim = state.year !== "all" && state.year !== yr;
+      var g = el("g", { class: dim ? "lane-dim" : "" });
+      g.appendChild(el("rect", { class: "lane-bg", x: padL, y: top, width: plotW, height: laneH - 4, rx: 3 }));
+      g.appendChild(el("text", { class: "ax ink", x: padL - 8, y: top + laneH / 2 + 2, "text-anchor": "end" }, yr));
+      var jan1 = new Date(yr + "-01-01T12:00:00Z");
+      Object.keys(byDate).forEach(function (d) {
+        if (d.slice(0, 4) !== yr) return;
+        var doy = Math.round((new Date(d + "T12:00:00Z") - jan1) / 86400000), r = byDate[d], tot = r.pool + r.ow;
+        var h = Math.max(5, (laneH - 8) * Math.sqrt(tot / maxD)), xx = x(doy + 0.5), yb = top + laneH - 6;
+        var ln = el("line", { class: r.ow ? "t-ow" : "t-pool", x1: xx, x2: xx, y1: yb, y2: yb - h });
+        g.appendChild(ln);
+        g.appendChild(el("rect", { class: "hit", x: xx - 2, y: top, width: 4, height: laneH - 4, "data-tip": cap(DIA[wd(d)]) + " " + fmtDate(d) + "\n" + Math.round(tot).toLocaleString("ca-ES") + " m" + (r.ow ? " (aigües obertes)" : "") }));
+      });
+      svg.appendChild(g);
+    });
+  }
+
+  function quant(arr, q) { var a = arr.slice().sort(function (x, y) { return x - y; }); var pos = (a.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos); return a[lo] + (a[hi] - a[lo]) * (pos - lo); }
+
+  function renderPace(sess) {
+    var pool = sess.filter(function (s) { return s.type === "lap_swimming" && s.pace_s100; });
+    var months = {};
+    pool.forEach(function (s) { var k = s.date.slice(0, 7); (months[k] = months[k] || { p: [], w: [] }).p.push(s.pace_s100); if (s.swolf && s.poolLength === 25) months[k].w.push(s.swolf); });
+    var keys = Object.keys(months).sort();
+    var cont = $("paceChart");
+    if (keys.length < 2) { cont.innerHTML = "<p class='q'>No hi ha prou mesos amb sessions de piscina en aquest període.</p>"; return; }
+    var rows = keys.map(function (k) { var m = months[k]; return { k: k, p50: quant(m.p, .5), p25: quant(m.p, .25), p75: quant(m.p, .75), w50: m.w.length ? quant(m.w, .5) : null, w25: m.w.length ? quant(m.w, .25) : null, w75: m.w.length ? quant(m.w, .75) : null, n: m.p.length }; });
+    var panelH = 150, gap = 34, padL = 48, padR = 54, padT = 22, H = padT + panelH * 2 + gap + 24;
+    var o = svgFor(cont, H), svg = o.svg, W = o.w, plotW = W - padL - padR;
+    function x(i) { return padL + (rows.length === 1 ? plotW / 2 : i / (rows.length - 1) * plotW); }
+    function panel(top, title, lo, hi, mid, fmt, minStep) {
+      var vals = []; rows.forEach(function (r) { if (r[mid] != null) vals.push(r[mid]); });
+      var a = quant(vals, 0.04), b = quant(vals, 0.96), padV = Math.max((b - a) * 0.25, minStep);
+      var step = Math.max(minStep, Math.ceil(niceStep(b - a + 2 * padV, 4) / minStep) * minStep);
+      var vmin = Math.floor((a - padV) / step) * step, vmax = Math.ceil((b + padV) / step) * step;
+      if (vmax === vmin) vmax = vmin + step;
+      function y(v) { v = Math.max(vmin, Math.min(vmax, v)); return top + (v - vmin) / (vmax - vmin) * panelH; } // invertit: el valor baix (millor) va amunt
+      svg.appendChild(el("text", { class: "ax ink", x: padL, y: top - 8 }, title));
+      for (var t = vmin; t <= vmax + 1e-9; t += step) { svg.appendChild(el("line", { class: "gl", x1: padL, x2: W - padR, y1: y(t), y2: y(t) })); svg.appendChild(el("text", { class: "ax", x: padL - 8, y: y(t) + 4, "text-anchor": "end" }, fmt(t))); }
+      var up = "", down = "";
+      rows.forEach(function (r, i) { if (r[lo] == null) return; up += (up ? "L" : "M") + x(i).toFixed(1) + "," + y(r[lo]).toFixed(1); });
+      for (var i = rows.length - 1; i >= 0; i--) { if (rows[i][hi] == null) continue; down += "L" + x(i).toFixed(1) + "," + y(rows[i][hi]).toFixed(1); }
+      svg.appendChild(el("path", { class: "band", d: up + down + "Z" }));
+      var d = ""; rows.forEach(function (r, i) { if (r[mid] == null) return; d += (d ? "L" : "M") + x(i).toFixed(1) + "," + y(r[mid]).toFixed(1); });
+      svg.appendChild(el("path", { class: "line", d: d }));
+      var last = rows.length - 1; while (last > 0 && rows[last][mid] == null) last--;
+      svg.appendChild(el("circle", { class: "end-dot", cx: x(last), cy: y(rows[last][mid]), r: 5 }));
+      svg.appendChild(el("text", { class: "val", x: x(last) + 9, y: y(rows[last][mid]) + 5 }, fmt(rows[last][mid])));
+      return y;
+    }
+    var yP = panel(padT, "Ritme per 100 m", "p25", "p75", "p50", function (v) { return clock(v); }, 5);
+    var yW = panel(padT + panelH + gap, "SWOLF a piscina de 25 m (braçades + segons per llargada)", "w25", "w75", "w50", function (v) { return String(Math.round(v)); }, 1);
+    var years = {};
+    rows.forEach(function (r, i) { var yy = r.k.slice(0, 4); if (!(yy in years)) years[yy] = i; });
+    var lastLbl = -100;
+    Object.keys(years).forEach(function (yy) { var xx = x(years[yy]); if (xx - lastLbl < 34) return; lastLbl = xx; svg.appendChild(el("text", { class: "ax", x: xx, y: H - 4, "text-anchor": "start" }, state.year === "all" ? yy : "")); });
+    if (state.year !== "all" && state.month === "all") rows.forEach(function (r, i) { svg.appendChild(el("text", { class: "ax", x: x(i), y: H - 4, "text-anchor": "middle" }, MES[parseInt(r.k.slice(5), 10) - 1])); });
+    var bw = plotW / Math.max(1, rows.length - 1);
+    rows.forEach(function (r, i) {
+      var p = r.k.split("-");
+      svg.appendChild(el("rect", { class: "hit", x: x(i) - bw / 2, y: padT, width: bw, height: panelH * 2 + gap, "data-tip": cap(MESF[parseInt(p[1], 10) - 1]) + " " + p[0] + " · " + r.n + " sessions\nRitme: " + clock(r.p50) + " per 100" + (r.w50 != null ? "\nSWOLF: " + Math.round(r.w50) : "") }));
+    });
+  }
+
+  function best(list, dist) { return list.filter(function (r) { return r.distance === dist; }).sort(function (x, y) { return x.time_s - y.time_s; })[0]; }
+  function ageOf(iso) {
+    var a = new Date(iso + "T12:00:00Z"), b = new Date(TODAY + "T12:00:00Z");
+    var months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth()) - (b.getUTCDate() < a.getUTCDate() ? 1 : 0);
+    var days = Math.round((b - a) / 86400000);
+    if (days < 31) return ["aquest mes", true];
+    if (months < 12) return ["fa " + months + (months === 1 ? " mes" : " mesos"), months < 3];
+    var y = Math.floor(months / 12);
+    return ["fa " + y + (y === 1 ? " any" : " anys"), false];
+  }
+
+  function renderRecords(recs) {
+    var filtered = !(state.year === "all" && state.month === "all");
+    var cutoff = isoAdd(TODAY, -365);
+    var cmpList = filtered ? recs : D.records.filter(function (r) { return r.date > cutoff; });
+    var cmpName = filtered ? "Millor " + scopeName() : "Millor dels últims 12 mesos";
+    $("recQ").textContent = "Cada carril és una distància i la paret de la dreta és el teu rècord. El nedador és el " + cmpName.charAt(0).toLowerCase() + cmpName.slice(1) + ": on seria quan el rècord toca la paret, amb el seu temps i els segons que li falten.";
+    var allB = RECORD_DIST.map(function (d) { return best(D.records, d); });
+    var cmpB = RECORD_DIST.map(function (d) { return best(cmpList, d); });
+
+    /* piscina */
+    var laneH = 40, wallW = 5, padT = 22, padB = 22, narrow = ($("poolChart").clientWidth || 800) < 520, deckL = narrow ? 48 : 64;
+    var H = padT + RECORD_DIST.length * laneH + padB;
+    var o = svgFor($("poolChart"), H), svg = o.svg, W = o.w;
+    var x0 = deckL + wallW, x1 = W - wallW - 8, pxm = (x1 - x0) / 25;
+    function xm(m) { return x0 + m * pxm; }  // m: metres des de la paret de sortida del llarg
+    svg.appendChild(el("rect", { class: "deck", x: 0, y: 0, width: W, height: H }));
+    svg.appendChild(el("rect", { class: "water", x: x0, y: padT, width: x1 - x0, height: laneH * RECORD_DIST.length }));
+    svg.appendChild(el("rect", { class: "wall", x: x0 - wallW, y: padT - 2, width: wallW, height: laneH * RECORD_DIST.length + 4 }));
+    svg.appendChild(el("rect", { class: "wall finish", x: x1, y: padT - 2, width: wallW, height: laneH * RECORD_DIST.length + 4 }));
+    [5, 20].forEach(function (m) { svg.appendChild(el("line", { class: "flag", x1: xm(m), x2: xm(m), y1: padT, y2: padT + laneH * RECORD_DIST.length })); });
+    svg.appendChild(el("text", { class: "ax", x: xm(20), y: padT - 7, "text-anchor": "middle" }, "a 5 m"));
+    svg.appendChild(el("text", { class: "ax", x: xm(5), y: padT - 7, "text-anchor": "middle" }, "a 20 m"));
+    if (!narrow) svg.appendChild(el("text", { class: "ax ink", x: x1 + wallW, y: padT - 7, "text-anchor": "end" }, "rècord"));
+    svg.appendChild(el("text", { class: "ax", x: x0, y: H - 6 }, "l'últim llarg de 25 m"));
+
+    RECORD_DIST.forEach(function (dist, i) {
+      var top = padT + i * laneH, cy = top + laneH / 2;
+      if (i > 0) { svg.appendChild(el("line", { class: "rope-a", x1: x0, x2: x1, y1: top, y2: top })); svg.appendChild(el("line", { class: "rope-b", x1: x0, x2: x1, y1: top, y2: top })); }
+      svg.appendChild(el("line", { class: "tline", x1: xm(2), x2: xm(23), y1: cy, y2: cy }));
+      svg.appendChild(el("text", { class: "lane-name", x: deckL - 8, y: cy + 5.5, "text-anchor": "end" }, narrow ? String(dist) : dist + " m"));
+      var rec = allB[i], cmp = cmpB[i];
+      if (!rec) return;
+      var SR = 8, atWall = x1 - SR - 3;
+      if (!cmp) {
+        svg.appendChild(el("text", { class: "gap-lbl none", x: atWall, y: cy + 4.5, "text-anchor": "end" }, "sense temps en aquest període"));
+        return;
+      }
+      var diff = cmp.time_s - rec.time_s, gapM = diff * dist / rec.time_s;
+      var tipTxt = dist + " m · " + cmpName + ": " + swimTime(cmp.time_s) + " (" + fmtDate(cmp.date) + ")\nRècord: " + swimTime(rec.time_s) + " (" + fmtDate(rec.date) + ")";
+      if (diff <= 0.05) {
+        svg.appendChild(el("circle", { class: "sw-same", cx: atWall, cy: cy, r: SR, "data-tip": tipTxt }));
+        svg.appendChild(el("text", { class: "gap-lbl ok", x: atWall - SR - 8, y: cy + 5, "text-anchor": "end" }, swimTime(cmp.time_s) + " · iguala el rècord"));
+        return;
+      }
+      var over = gapM >= 25, cx = over ? x0 + SR + 3 : Math.max(x0 + SR + 3, Math.min(atWall, xm(25 - gapM)));
+      if (!over && cx - 30 > x0) svg.appendChild(el("line", { class: "sw-wake", x1: Math.max(x0 + 2, cx - 30), x2: cx - SR - 3, y1: cy, y2: cy }));
+      svg.appendChild(el("circle", { class: "sw-cmp", cx: cx, cy: cy, r: SR, "data-tip": tipTxt }));
+      var lbl = swimTime(cmp.time_s) + " · +" + diff.toLocaleString("ca-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " s" + (over ? " · més d'un llarg" : "");
+      var est = lbl.length * 7.2;
+      if (cx - SR - 10 - est > x0 + 4) svg.appendChild(el("text", { class: "gap-lbl", x: cx - SR - 10, y: cy + 5, "text-anchor": "end" }, lbl));
+      else svg.appendChild(el("text", { class: "gap-lbl", x: cx + SR + 8, y: cy + 5, "text-anchor": "start" }, lbl));
+    });
+    var lg = $("poolLegend"); lg.innerHTML = "";
+    [["var(--pool)", cmpName], ["var(--ok)", "Iguala el rècord"]].forEach(function (it) {
+      var sp = document.createElement("span"), i = document.createElement("i"); i.className = "dot"; i.style.background = it[0];
+      sp.appendChild(i); sp.appendChild(document.createTextNode(it[1])); lg.appendChild(sp);
+    });
+    var note = document.createElement("span"); note.style.color = "var(--muted)"; note.textContent = "La distància a la paret correspon als segons de diferència, nedats al ritme del rècord."; lg.appendChild(note);
+
+    /* marcador */
+    var head = $("recHead"); head.innerHTML = "";
+    ["Distància", "Rècord", "Per 100", "Quan", filtered ? cap(scopeName().replace(/^(del |dels |de |d')/, "")) : "Últims 12 mesos"].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; if (h === "Per 100") th.className = "c-pace"; head.appendChild(th); });
+    var body = $("recBody"); body.innerHTML = "";
+    RECORD_DIST.forEach(function (dist, i) {
+      var b = allB[i], c = cmpB[i], tr = document.createElement("tr");
+      var td = document.createElement("td"); td.className = "dist"; td.textContent = dist + " m"; tr.appendChild(td);
+      if (!b) { body.appendChild(tr); return; }
+      var t1 = document.createElement("td"); t1.className = "time"; t1.textContent = swimTime(b.time_s); tr.appendChild(t1);
+      var t2 = document.createElement("td"); t2.className = "c-pace"; t2.textContent = clock(b.time_s / (dist / 100)); tr.appendChild(t2);
+      var ag = ageOf(b.date), t3 = document.createElement("td"); t3.className = "age" + (ag[1] ? " fresh" : "");
+      var bb = document.createElement("b"); bb.textContent = ag[0]; var sp = document.createElement("span"); sp.textContent = fmtDate(b.date);
+      t3.appendChild(bb); t3.appendChild(sp); tr.appendChild(t3);
+      var t4 = document.createElement("td"); t4.className = "gap" + (c && c.time_s - b.time_s <= 0.05 ? " is-rec" : "");
+      t4.textContent = c ? swimTime(c.time_s) : "—"; tr.appendChild(t4);
+      body.appendChild(tr);
+    });
+  }
+
+  function renderHistory() {
+    var sess = D.sessions.filter(function (s) { return inScope(s.date); });
+    var recs = D.records.filter(function (r) { return inScope(r.date); });
+    $("fReset").hidden = state.year === "all" && state.month === "all";
+    renderScores(sess, recs); renderVolume(); renderLanes(); renderPace(sess); renderRecords(recs);
+  }
+
+  renderMonday();
+  renderWeeks();
+  renderBoard();
+  renderHistory();
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { renderVolume(); renderLanes(); renderPace(D.sessions.filter(function (s) { return inScope(s.date); })); renderRecords(D.records.filter(function (r) { return inScope(r.date); })); }, 150); });
+}
+fetch("data/web.json", { cache: "no-store" })
+  .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(start)
+  .catch(function () {
+    var p = document.querySelector(".page");
+    var m = document.createElement("p"); m.className = "lead"; m.style.padding = "40px 0";
+    m.textContent = "No s'han pogut carregar les dades. Torna-ho a provar d'aquí a una estona.";
+    p.innerHTML = ""; p.appendChild(m);
+  });
+</script>
+
+</body>
+</html>

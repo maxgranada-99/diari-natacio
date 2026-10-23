@@ -1,0 +1,5 @@
+*
+!index.html
+!data/
+!data/web.json
+!.gitignore
