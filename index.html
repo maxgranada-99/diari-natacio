@@ -135,7 +135,7 @@
   @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
   .block-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .weeks { display: flex; flex-direction: column; }
-  .wk { display: grid; grid-template-columns: 102px repeat(3, 34px) minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--grid); }
+  .wk { display: grid; grid-template-columns: 102px repeat(3, 34px) minmax(60px, auto) minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--grid); }
   .wk:first-child { border-top: none; }
   .wk .lbl { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .wk .lbl b { color: var(--ink); }
@@ -143,6 +143,9 @@
   .day.done { background: var(--pool); color: var(--on-pool); }
   .day.miss { border: 1.5px solid var(--miss); color: var(--miss); }
   .day.pending { border: 1.5px dashed var(--muted); color: var(--muted); }
+  .extras { display: flex; flex-wrap: wrap; gap: 4px; }
+  .extra { height: 26px; padding: 0 7px; border-radius: 5px; background: var(--grid); color: var(--ink-2); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: 0.03em; white-space: nowrap; }
+  .extra.ow { color: var(--ow); }
   .wk .mtr { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
   .summary { font-size: 14px; color: var(--ink-2); margin: 0; }
   .summary b { color: var(--ink); }
@@ -462,8 +465,12 @@ function start(D) {
 
   /* ================= setmana ================= */
   function renderWeeks() {
-    var byDay = {};
-    D.sessions.forEach(function (s) { if (s.type === "lap_swimming") byDay[s.date] = (byDay[s.date] || 0) + s.distance; });
+    var byDay = {}, distByDay = {}, typeByDay = {};
+    D.sessions.forEach(function (s) {
+      if (s.type === "lap_swimming") byDay[s.date] = (byDay[s.date] || 0) + s.distance;
+      distByDay[s.date] = (distByDay[s.date] || 0) + s.distance;
+      typeByDay[s.date] = s.type;
+    });
     var weeks = [], w = mondayOf(TODAY);
     for (var i = 0; i < 8; i++) { weeks.push(w); w = isoAdd(w, -7); }
     var totals = weeks.map(function (wk) { var t = 0; for (var k = 0; k < 7; k++) t += byDay[isoAdd(wk, k)] || 0; return t; });
@@ -484,6 +491,17 @@ function start(D) {
         else { c.className = "day miss"; all = false; miss[d[0]]++; c.setAttribute("data-tip", cap(DIA[wd(day)]) + " " + fmtShort(day) + "\nno s'ha nedat"); }
         row.appendChild(c);
       });
+      var extrasCell = document.createElement("div"); extrasCell.className = "extras";
+      [[3, "DJ"], [5, "DS"], [6, "DG"]].forEach(function (d) {
+        var day = isoAdd(wk, d[0]), t = typeByDay[day];
+        if (!t) return;
+        var e = document.createElement("span");
+        e.className = "extra" + (t === "open_water_swimming" ? " ow" : "");
+        e.textContent = d[1] + (t === "open_water_swimming" ? " · mar" : "");
+        e.setAttribute("data-tip", cap(DIA[wd(day)]) + " " + fmtShort(day) + "\n" + Math.round(distByDay[day] || 0).toLocaleString("ca-ES") + " m");
+        extrasCell.appendChild(e);
+      });
+      row.appendChild(extrasCell);
       var mcell = document.createElement("div"); mcell.className = "mtr";
       mcell.textContent = totals[idx] ? totals[idx].toLocaleString("ca-ES") + " m" : "cap sessió";
       row.appendChild(mcell);
