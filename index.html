@@ -222,6 +222,19 @@
     table.rec td.gap { font-size: 14px; }
   }
   .pool-wrap { border-radius: 10px; overflow: hidden; }
+  .top5-head { display: flex; justify-content: space-between; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-top: 18px; }
+  .top5-head h4 { margin: 0; font-family: var(--display); font-size: 18px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.rec.top5 td.pos { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--muted); width: 2.2em; }
+  table.rec.top5 td.when { white-space: normal; }
+  table.rec.top5 td.ago { font-family: var(--display); font-weight: 600; font-size: 16px; color: var(--ink); }
+  table.rec.top5 tr.recent td.pos { box-shadow: inset 3px 0 0 var(--ok); padding-left: 10px; color: var(--ok); }
+  table.rec.top5 tr.recent td.time, table.rec.top5 tr.recent td.ago { color: var(--ok); }
+  table.rec.top5 td.none { text-align: left; }
+  @media (max-width: 520px) {
+    table.rec.top5 td.pos { font-size: 16px; }
+    table.rec.top5 td.ago { font-size: 14px; }
+    table.rec.top5 td.when { font-size: 13px; }
+  }
   .water { fill: var(--water); }
   .water-alt { fill: var(--water-2); }
   .deck { fill: var(--panel); }
@@ -343,10 +356,18 @@
       <p class="q" id="recQ"></p>
       <div class="pool-wrap"><div class="chart" id="poolChart"></div></div>
       <div class="legend" id="poolLegend"></div>
-      <div style="margin-top:14px"><table class="rec" id="recTable">
-        <thead><tr id="recHead"></tr></thead>
-        <tbody id="recBody"></tbody>
-      </table></div>
+      <div class="top5-head">
+        <h4 id="top5Title">Top 5</h4>
+        <div class="filters">
+          <label for="fTop" class="kicker" style="margin-right:2px">Distància</label>
+          <select id="fTop" aria-label="Distància del top 5"></select>
+        </div>
+      </div>
+      <p class="q" id="top5Q" style="margin-top:6px"></p>
+      <table class="rec top5" id="top5Table" aria-labelledby="top5Title">
+        <thead><tr><th>#</th><th>Temps</th><th class="c-pace">Per 100</th><th>Data</th><th>Antiguitat</th></tr></thead>
+        <tbody id="top5Body"></tbody>
+      </table>
     </div>
   </section>
 
@@ -360,7 +381,8 @@ function start(D) {
   var TODAY = D.generat_el;
   var MONDAY = D.monday;
   var SORTIDES = D.sortides;
-  var RECORD_DIST = [50, 75, 100, 200, 300, 400, 600, 1000];
+  var RECORD_DIST = [50, 100, 150, 200, 300, 400, 500, 600, 800, 1000];  // carrils de la piscina
+  var TOP_DIST = [50, 75, 100, 150, 200, 300, 400, 500, 600, 800, 1000];  // desplegable del top 5
 
   var NS = "http://www.w3.org/2000/svg";
   var MES = ["gen", "feb", "mar", "abr", "mai", "jun", "jul", "ago", "set", "oct", "nov", "des"];
@@ -755,24 +777,34 @@ function start(D) {
     });
     var note = document.createElement("span"); note.style.color = "var(--muted)"; note.textContent = "La distància a la paret correspon als segons de diferència, nedats al ritme del rècord."; lg.appendChild(note);
 
-    /* marcador */
-    var head = $("recHead"); head.innerHTML = "";
-    ["Distància", "Rècord", "Per 100", "Quan", filtered ? cap(scopeName().replace(/^(del |dels |de |d')/, "")) : "Últims 12 mesos"].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; if (h === "Per 100") th.className = "c-pace"; head.appendChild(th); });
-    var body = $("recBody"); body.innerHTML = "";
-    RECORD_DIST.forEach(function (dist, i) {
-      var b = allB[i], c = cmpB[i], tr = document.createElement("tr");
-      var td = document.createElement("td"); td.className = "dist"; td.textContent = dist + " m"; tr.appendChild(td);
-      if (!b) { body.appendChild(tr); return; }
-      var t1 = document.createElement("td"); t1.className = "time"; t1.textContent = swimTime(b.time_s); tr.appendChild(t1);
-      var t2 = document.createElement("td"); t2.className = "c-pace"; t2.textContent = clock(b.time_s / (dist / 100)); tr.appendChild(t2);
-      var ag = ageOf(b.date), t3 = document.createElement("td"); t3.className = "age" + (ag[1] ? " fresh" : "");
-      var bb = document.createElement("b"); bb.textContent = ag[0]; var sp = document.createElement("span"); sp.textContent = fmtDate(b.date);
-      t3.appendChild(bb); t3.appendChild(sp); tr.appendChild(t3);
-      var t4 = document.createElement("td"); t4.className = "gap" + (c && c.time_s - b.time_s <= 0.05 ? " is-rec" : "");
-      t4.textContent = c ? swimTime(c.time_s) : "—"; tr.appendChild(t4);
+  }
+
+  /* ---- top 5 (sempre històric: no depèn del filtre d'any i mes) ---- */
+  function renderTop5() {
+    var dist = +$("fTop").value, cutoff = isoAdd(TODAY, -365);
+    // records ja té una sola entrada per sessió i distància (el millor tram de la sessió)
+    var list = D.records.filter(function (r) { return r.distance === dist; })
+      .sort(function (x, y) { return x.time_s - y.time_s || (x.date < y.date ? -1 : 1); }).slice(0, 5);
+    $("top5Q").textContent = "Els cinc millors temps de " + dist + " m de tot l'històric, cadascun d'una sessió diferent. En verd, els dels últims 12 mesos.";
+    var body = $("top5Body"); body.innerHTML = "";
+    if (!list.length) {
+      var tr0 = document.createElement("tr"), td0 = document.createElement("td"); td0.colSpan = 5; td0.className = "none";
+      td0.textContent = "Encara no hi ha cap temps de " + dist + " m."; tr0.appendChild(td0); body.appendChild(tr0); return;
+    }
+    list.forEach(function (r, i) {
+      var tr = document.createElement("tr"); if (r.date > cutoff) tr.className = "recent";
+      [["pos", String(i + 1)], ["time", swimTime(r.time_s)], ["c-pace", clock(r.time_s / (dist / 100))], ["when", fmtDate(r.date)], ["ago", ageOf(r.date)[0]]].forEach(function (c) {
+        var td = document.createElement("td"); td.className = c[0]; td.textContent = c[1]; tr.appendChild(td);
+      });
       body.appendChild(tr);
     });
   }
+  (function setupTop5() {
+    var f = $("fTop");
+    TOP_DIST.forEach(function (d) { var op = document.createElement("option"); op.value = String(d); op.textContent = d + " m"; f.appendChild(op); });
+    f.value = "100";
+    f.addEventListener("change", renderTop5);
+  })();
 
   function renderHistory() {
     var sess = D.sessions.filter(function (s) { return inScope(s.date); });
@@ -785,6 +817,7 @@ function start(D) {
   renderWeeks();
   renderBoard();
   renderHistory();
+  renderTop5();
   var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { renderVolume(); renderLanes(); renderPace(D.sessions.filter(function (s) { return inScope(s.date); })); renderRecords(D.records.filter(function (r) { return inScope(r.date); })); }, 150); });
 }
 fetch("data/web.json", { cache: "no-store" })
